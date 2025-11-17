@@ -1,0 +1,246 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+
+// Nodemailer transporter
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+const bcrypt = require('bcrypt');
+
+// POST /register
+router.post('/register', async (req, res) => {
+    const { username, email, phone, password, confirmPassword } = req.body;
+
+    if (!username || !email || !phone || !password || !confirmPassword) {
+        return res.status(400).json({ message: 'All fields required' });
+    }
+
+    if (password !== confirmPassword) {
+    return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    try {
+        
+       const userByEmail = await User.findOne({ email });
+
+        if (userByEmail) {
+            if (!userByEmail.verified) {
+                // Email exists but NOT verified → delete old account
+                await User.deleteOne({ _id: userByEmail._id });
+            } else {
+                // Email exists AND verified → block registration
+                return res.status(400).json({
+                    message: "Email already in use. Please use another email."
+                });
+            }
+        }
+        const userByUsername = await User.findOne({ username });
+
+        if (userByUsername) {
+            return res.status(400).json({
+                message: "Username already taken. Please choose a different username."
+            });
+        }
+
+        // Hash password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Generate OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+
+        // Hash OTP
+        const hashedOtp = await bcrypt.hash(otp, saltRounds);
+        
+        // Save user with hashed password and otp
+        const newUser = new User({ username, email, phone, password: hashedPassword, otp:hashedOtp, verified: false });
+        await newUser.save();
+
+        // Send OTP email
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Verification OTP',
+            text: `Your OTP code is ${otp}`
+        });
+
+        res.status(200).json({ message: 'OTP sent to email' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
+
+
+module.exports = router;
+// POST /verify-email
+router.post('/verify-email', async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP required' });
+
+    try {
+       /* const user = await User.findOne({ email, otp });
+        if (!user) return res.status(400).json({ message: 'Invalid OTP' });*/
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'User not found' });
+
+        const isMatch = await bcrypt.compare(otp, user.otp || '');
+        if (!isMatch) return res.status(400).json({ message: 'Invalid OTP' });
+
+        user.verified = true;
+        user.otp = null; // clear OTP
+        await user.save();
+
+        res.status(200).json({ message: 'Email verified successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+router.post('/resend-otp', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email required' });
+    
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'User not found' });
+
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        user.otp = hashedOtp;
+        await user.save();
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your New Verification OTP',
+            text: `Your new OTP code is ${otp}`
+        });
+
+        res.status(200).json({ message: 'OTP resent successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
+// POST /reset-request
+router.post('/reset-request', async (req, res) => {
+    const { email, newPassword, confirmNewPassword } = req.body;
+    if (!email || !newPassword || !confirmNewPassword) return res.status(400).json({ message: 'All fields required' });
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'User not found' });
+
+        // Generate OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        user.otp = hashedOtp;
+        user.tempPassword = hashedNewPassword; // store temporarily
+        await user.save();
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Reset Password OTP',
+            text: `Your OTP code is ${otp}`
+        });
+
+        res.status(200).json({ message: 'OTP sent to email' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// POST /reset-verify
+router.post('/reset-verify', async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP required' });
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user || !user.otp || !user.tempPassword) return res.status(400).json({ message: 'No pending password reset found' });
+
+        const isMatch = await bcrypt.compare(otp, user.otp);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid OTP' });
+
+        // Update password
+        user.password = user.tempPassword;
+        user.tempPassword = null;
+        user.otp = null;
+        await user.save();
+
+        res.status(200).json({ message: 'Password reset successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// LOGIN
+router.post("/login", async (req, res) => {
+    const { identifier, password } = req.body; 
+    // identifier = email OR username
+
+    if (!identifier || !password) {
+        return res.status(400).json({ message: "All fields required" });
+    }
+
+    try {
+        let user;
+
+        // Check if identifier is email or username
+        if (identifier.includes("@")) {
+            // Email (case-insensitive)
+            user = await User.findOne({ email: { $regex: new RegExp("^" + identifier + "$", "i") } });
+        } else {
+            // Username (CASE SENSITIVE)
+            user = await User.findOne({ username: identifier });
+        }
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        if (!user.verified) {
+            return res.status(400).json({ message: "Email not verified" });
+        }
+
+        // Compare password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Incorrect password" });
+        }
+
+        return res.status(200).json({
+            message: "Login successful",
+            userId: user._id, 
+            username: user.username,
+            email: user.email
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+});
+
