@@ -24,7 +24,10 @@ const getUserMiddleware = async (req, res, next) => {
 router.get('/data', getUserMiddleware, async (req, res) => {
     try {
         const { month, year } = req.query; // 0-based month
-        const selectedMonth = month ? parseInt(month) : new Date().getMonth();
+
+        // ✅ ONLY CHANGE: make month 1-based → 0-based
+        const selectedMonth = month ? (parseInt(month) - 1) : new Date().getMonth();
+
         const selectedYear = year ? parseInt(year) : new Date().getFullYear();
 
         const startDate = new Date(selectedYear, selectedMonth, 1);
