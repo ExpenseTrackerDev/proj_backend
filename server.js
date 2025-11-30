@@ -42,6 +42,8 @@ app.use("/api/budget", budgetRoutes);
 app.use("/api/incomes", incomeRoutes);
 app.use('/api/report', reportRoutes);
 
+
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {

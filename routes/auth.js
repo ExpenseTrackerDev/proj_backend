@@ -244,3 +244,57 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// GET /profile/:userId → fetch current profile
+router.get('/profile/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId).select('username email phone');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        res.status(200).json({
+            username: user.username,
+            email: user.email,
+            phone: user.phone
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// PUT /profile/:userId → update profile (partial update allowed)
+router.put('/profile/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { username, email, phone } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Update only provided fields
+        if (username) {
+            const usernameExists = await User.findOne({ username, _id: { $ne: userId } });
+            if (usernameExists) return res.status(400).json({ message: 'Username already taken' });
+            user.username = username;
+        }
+
+        if (email) {
+            const emailExists = await User.findOne({ email, _id: { $ne: userId } });
+            if (emailExists) return res.status(400).json({ message: 'Email already in use' });
+            user.email = email;
+        }
+
+        if (phone) {
+            user.phone = phone;
+        }
+
+        await user.save();
+
+        res.status(200).json({ message: 'Profile updated successfully' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
