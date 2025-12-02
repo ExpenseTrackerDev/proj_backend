@@ -5,13 +5,24 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 // Nodemailer transporter
-const transporter = nodemailer.createTransport({
+/*const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     }
+});*/
+// Nodemailer transporter using SMTP (Mailgun)
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,     // e.g., smtp.mailgun.org
+    port: process.env.SMTP_PORT,     // 587 for TLS
+    secure: false,                    // true for 465, false for 587
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
 });
+
 
 const bcrypt = require('bcrypt');
 
