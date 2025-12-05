@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 // Nodemailer transporter
 /*const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -13,7 +14,7 @@ const crypto = require('crypto');
     }
 });*/
 // Nodemailer transporter using SMTP (Mailgun)
-const transporter = nodemailer.createTransport({
+/*const transporter = nodemailer.createTransport({
     service: 'gmail',
     host: process.env.SMTP_HOST,     // e.g., smtp.mailgun.org
     port: process.env.SMTP_PORT,     // 587 for TLS
@@ -21,13 +22,25 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }/*,
-    tls: {
-        rejectUnauthorized: false
-    }*/
+    }
 });
+*/
 
 
+// send email function
+async function sendEmail(to, subject, message) {
+    try {
+        await resend.emails.send({
+            from: process.env.EMAIL_FROM,
+            to,
+            subject,
+            text: message
+        });
+    } catch (err) {
+        console.error("Email send error:", err);
+        throw new Error("Failed to send email");
+    }
+}
 
 const bcrypt = require('bcrypt');
 
@@ -81,12 +94,18 @@ router.post('/register', async (req, res) => {
         await newUser.save();
 
         // Send OTP email
-        await transporter.sendMail({
+       /* await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
             subject: 'Your Verification OTP',
             text: `Your OTP code is ${otp}`
-        });
+        });*/
+        await sendEmail(
+            email,
+            "Your Verification OTP",
+            `Your OTP code is ${otp}`
+            );
+
 
         res.status(200).json({ message: 'OTP sent to email' });
     } catch (err) {
@@ -140,12 +159,17 @@ router.post('/resend-otp', async (req, res) => {
         user.otp = hashedOtp;
         await user.save();
 
-        await transporter.sendMail({
+        /*await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
             subject: 'Your New Verification OTP',
             text: `Your new OTP code is ${otp}`
-        });
+        });*/
+         await sendEmail(
+            email,
+            "Your New Verification OTP",
+            `Your new OTP code is ${otp}`
+            );
 
         res.status(200).json({ message: 'OTP resent successfully' });
     } catch (err) {
@@ -173,12 +197,17 @@ router.post('/reset-request', async (req, res) => {
         user.tempPassword = hashedNewPassword; // store temporarily
         await user.save();
 
-        await transporter.sendMail({
+        /*await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
             subject: 'Your Reset Password OTP',
             text: `Your OTP code is ${otp}`
-        });
+        });*/
+         await sendEmail(
+            email,
+            "Your Reset Password OTP",
+            `Your OTP code is ${otp}`
+            );
 
         res.status(200).json({ message: 'OTP sent to email' });
     } catch (err) {
