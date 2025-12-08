@@ -6,7 +6,7 @@ const crypto = require('crypto');
 //const { Resend } = require('resend');
 //const resend = new Resend(process.env.RESEND_API_KEY);
 // Nodemailer transporter
-const transporter = nodemailer.createTransport({
+/*const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,    // smtp-relay.brevo.com
     port: process.env.SMTP_PORT,    // 587
     secure: false,                  // false for TLS
@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
         user: process.env.SMTP_USER,   // Brevo SMTP login (e.g., 9d8e9d001@smtp-brevo.com)
         pass: process.env.SMTP_PASS    // your SMTP key from Brevo
     }
-});
+});*/
 
 // Nodemailer transporter using SMTP (Mailgun)
 /*const transporter = nodemailer.createTransport({
@@ -31,19 +31,35 @@ const transporter = nodemailer.createTransport({
 
 
 // send email function
+const fetch = require('node-fetch');
+
 async function sendEmail(to, subject, message) {
     try {
-        await transporter.sendMail({
-            from: process.env.EMAIL_FROM, // same as SMTP_USER
-            to,
-            subject,
-            text: message
+        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "api-key": process.env.BREVO_API_KEY
+            },
+            body: JSON.stringify({
+                sender: { email: process.env.EMAIL_FROM },
+                to: [{ email: to }],
+                subject: subject,
+                textContent: message
+            })
         });
+
+        if (!res.ok) {
+            throw new Error(`Brevo API error: ${res.statusText}`);
+        }
+
+        console.log("Email sent successfully to", to);
     } catch (err) {
         console.error("Email send error:", err);
-        throw new Error("Failed to send email");
+        throw err;
     }
 }
+
 
 
 const bcrypt = require('bcrypt');
