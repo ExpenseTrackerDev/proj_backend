@@ -6,13 +6,16 @@ const crypto = require('crypto');
 //const { Resend } = require('resend');
 //const resend = new Resend(process.env.RESEND_API_KEY);
 // Nodemailer transporter
-/*const transporter = nodemailer.createTransport({
-    service: 'gmail',
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,    // smtp-relay.brevo.com
+    port: process.env.SMTP_PORT,    // 587
+    secure: false,                  // false for TLS
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.SMTP_USER,   // Brevo SMTP login (e.g., 9d8e9d001@smtp-brevo.com)
+        pass: process.env.SMTP_PASS    // your SMTP key from Brevo
     }
-});*/
+});
+
 // Nodemailer transporter using SMTP (Mailgun)
 /*const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -28,10 +31,10 @@ const crypto = require('crypto');
 
 
 // send email function
-/*async function sendEmail(to, subject, message) {
+async function sendEmail(to, subject, message) {
     try {
-        await resend.emails.send({
-            from: process.env.EMAIL_FROM,
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM, // same as SMTP_USER
             to,
             subject,
             text: message
@@ -40,20 +43,8 @@ const crypto = require('crypto');
         console.error("Email send error:", err);
         throw new Error("Failed to send email");
     }
-}*/
+}
 
-const transporter = nodemailer.createTransport({
-    host: "smtp.promailer.io",
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
 
 const bcrypt = require('bcrypt');
 
@@ -113,25 +104,11 @@ router.post('/register', async (req, res) => {
             subject: 'Your Verification OTP',
             text: `Your OTP code is ${otp}`
         });*/
-        /*await sendEmail(
+        await sendEmail(
             email,
             "Your Verification OTP",
             `Your OTP code is ${otp}`
-            );*/
-
-        async function sendEmail(to, subject, message) {
-            try {
-                await transporter.sendMail({
-                    from: `"My App" <${process.env.MAIL_USER}>`,
-                    to,
-                    subject,
-                    text: message
-                });
-            } catch (err) {
-                console.error("Email send error:", err);
-                throw new Error("Failed to send email");
-            }
-        }
+            );
 
 
         res.status(200).json({ message: 'OTP sent to email' });
@@ -192,24 +169,11 @@ router.post('/resend-otp', async (req, res) => {
             subject: 'Your New Verification OTP',
             text: `Your new OTP code is ${otp}`
         });*/
-        /* await sendEmail(
+        await sendEmail(
             email,
             "Your New Verification OTP",
             `Your new OTP code is ${otp}`
-            );*/
-        async function sendEmail(to, subject, message) {
-            try {
-                await transporter.sendMail({
-                    from: `"My App" <${process.env.MAIL_USER}>`,
-                    to,
-                    subject,
-                    text: message
-                });
-            } catch (err) {
-                console.error("Email send error:", err);
-                throw new Error("Failed to send email");
-            }
-        }
+            );
 
         res.status(200).json({ message: 'OTP resent successfully' });
     } catch (err) {
@@ -243,24 +207,12 @@ router.post('/reset-request', async (req, res) => {
             subject: 'Your Reset Password OTP',
             text: `Your OTP code is ${otp}`
         });*/
-        /* await sendEmail(
+        await sendEmail(
             email,
             "Your Reset Password OTP",
             `Your OTP code is ${otp}`
-            );*/
-        async function sendEmail(to, subject, message) {
-            try {
-                await transporter.sendMail({
-                    from: `"My App" <${process.env.MAIL_USER}>`,
-                    to,
-                    subject,
-                    text: message
-                });
-            } catch (err) {
-                console.error("Email send error:", err);
-                throw new Error("Failed to send email");
-            }
-        }
+            );
+        
 
         res.status(200).json({ message: 'OTP sent to email' });
     } catch (err) {
