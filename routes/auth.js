@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-//const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+//const { Resend } = require('resend');
+//const resend = new Resend(process.env.RESEND_API_KEY);
 // Nodemailer transporter
 /*const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -28,7 +28,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 // send email function
-async function sendEmail(to, subject, message) {
+/*async function sendEmail(to, subject, message) {
     try {
         await resend.emails.send({
             from: process.env.EMAIL_FROM,
@@ -40,7 +40,20 @@ async function sendEmail(to, subject, message) {
         console.error("Email send error:", err);
         throw new Error("Failed to send email");
     }
-}
+}*/
+
+const transporter = nodemailer.createTransport({
+    host: "smtp.promailer.io",
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+});
 
 const bcrypt = require('bcrypt');
 
@@ -100,11 +113,25 @@ router.post('/register', async (req, res) => {
             subject: 'Your Verification OTP',
             text: `Your OTP code is ${otp}`
         });*/
-        await sendEmail(
+        /*await sendEmail(
             email,
             "Your Verification OTP",
             `Your OTP code is ${otp}`
-            );
+            );*/
+
+        async function sendEmail(to, subject, message) {
+            try {
+                await transporter.sendMail({
+                    from: `"My App" <${process.env.MAIL_USER}>`,
+                    to,
+                    subject,
+                    text: message
+                });
+            } catch (err) {
+                console.error("Email send error:", err);
+                throw new Error("Failed to send email");
+            }
+        }
 
 
         res.status(200).json({ message: 'OTP sent to email' });
@@ -165,11 +192,24 @@ router.post('/resend-otp', async (req, res) => {
             subject: 'Your New Verification OTP',
             text: `Your new OTP code is ${otp}`
         });*/
-         await sendEmail(
+        /* await sendEmail(
             email,
             "Your New Verification OTP",
             `Your new OTP code is ${otp}`
-            );
+            );*/
+        async function sendEmail(to, subject, message) {
+            try {
+                await transporter.sendMail({
+                    from: `"My App" <${process.env.MAIL_USER}>`,
+                    to,
+                    subject,
+                    text: message
+                });
+            } catch (err) {
+                console.error("Email send error:", err);
+                throw new Error("Failed to send email");
+            }
+        }
 
         res.status(200).json({ message: 'OTP resent successfully' });
     } catch (err) {
@@ -203,11 +243,24 @@ router.post('/reset-request', async (req, res) => {
             subject: 'Your Reset Password OTP',
             text: `Your OTP code is ${otp}`
         });*/
-         await sendEmail(
+        /* await sendEmail(
             email,
             "Your Reset Password OTP",
             `Your OTP code is ${otp}`
-            );
+            );*/
+        async function sendEmail(to, subject, message) {
+            try {
+                await transporter.sendMail({
+                    from: `"My App" <${process.env.MAIL_USER}>`,
+                    to,
+                    subject,
+                    text: message
+                });
+            } catch (err) {
+                console.error("Email send error:", err);
+                throw new Error("Failed to send email");
+            }
+        }
 
         res.status(200).json({ message: 'OTP sent to email' });
     } catch (err) {
