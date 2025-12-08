@@ -31,7 +31,8 @@ const crypto = require('crypto');
 
 
 // send email function
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 
 async function sendEmail(to, subject, message) {
     try {
