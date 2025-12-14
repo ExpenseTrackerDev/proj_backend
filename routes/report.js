@@ -42,13 +42,13 @@ router.get("/pdf", async (req, res) => {
 
         doc.fontSize(14).text("Incomes:");
         incomes.forEach(i => {
-            doc.text(`• ${i.category}: $${i.amount} on ${i.date.toDateString()}`);
+            doc.text(`• ${i.category}: Tk${i.amount} on ${i.date.toDateString()}`);
         });
         doc.moveDown();
 
         doc.fontSize(14).text("Expenses:");
         expenses.forEach(e => {
-            doc.text(`• ${e.category}: $${e.amount} on ${e.date.toDateString()}`);
+            doc.text(`• ${e.category}: Tk${e.amount} on ${e.date.toDateString()}`);
         });
 
         const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
@@ -56,9 +56,9 @@ router.get("/pdf", async (req, res) => {
         const balance = totalIncome - totalExpense;
 
         doc.moveDown();
-        doc.fontSize(16).text(`Total Income: $${totalIncome}`);
-        doc.text(`Total Expense: $${totalExpense}`);
-        doc.text(`Balance: $${balance}`);
+        doc.fontSize(16).text(`Total Income: Tk${totalIncome}`);
+        doc.text(`Total Expense: Tk${totalExpense}`);
+        doc.text(`Balance: Tk${balance}`);
 
         doc.end(); // finalize PDF
     } catch (err) {
